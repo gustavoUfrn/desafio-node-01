@@ -23,6 +23,21 @@ function checksExistsUserAccount(request, response, next) {
   next();
 }
 
+function checksExistsTodo(request, response, next) {
+  const { id } = request.params;
+  const { user } = request;
+
+  const todo = user.todos.find((todos) => todos.id === id);
+
+  if (!todo) {
+    return response.status(400).json({ Error: "Todo não existe"});
+  }
+
+  request.todo = todo;
+
+  next();
+}
+
 app.post('/users', (request, response) => {
   const { name, username } = request.body;
 
@@ -55,38 +70,39 @@ app.post('/todos', checksExistsUserAccount, (request, response) => {
   user.todos.push({
     id: uuidv4(),
     title,
+    done: "false",
     deadline: new Date(deadline),
-    created_at: new Date(),
-    done: false
+    created_at: new Date()
   });
 
-  return response.status(201).send();
+  return response.status(201).send(user.todos);
 });
 
-app.put('/todos/:id', checksExistsUserAccount, (request, response) => {
-  const { user } = request;
+app.put('/todos/:id', checksExistsUserAccount, checksExistsTodo, (request, response) => {
+  const { todo } = request;
   const { title, deadline } = request.body;
-  const { id } = request.params;
 
-  const todo = user.todos.find((todos) => todos.id === id);
-
-  if (!todo) {
-    return response.status(400).json({ Error: "Todo não existe"});
-  }
-  
   todo.title = title;
   todo.deadline = deadline;
 
   return response.status(201).send(todo);
 });
 
-app.patch('/todos/:id/done', checksExistsUserAccount, (request, response) => {
-  // Complete aqui complete auqi
+app.patch('/todos/:id/done', checksExistsUserAccount, checksExistsTodo, (request, response) => {
+  const { todo } = request;
+
+  todo.done = "true";
+
+  return response.status(201).send(todo);
 });
 
-app.delete('/todos/:id', checksExistsUserAccount, (request, response) => {
+app.delete('/todos/:id', checksExistsUserAccount, checksExistsTodo, (request, response) => {
+  const { todo } = request;
   const { user } = request;
-  // Complete aqui
+
+  const deleted = user.todos.splice(user.todos.indexOf(todo), 1);
+
+  return response.status(201).send(deleted);
 });
 
 module.exports = app;
